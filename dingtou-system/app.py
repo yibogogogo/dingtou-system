@@ -474,29 +474,71 @@ def main():
     score_dict = {k: v["score"] for k, v in scores.items()}
     allocation = allocation_engine.allocate(score_dict)
 
-    # ==================== 评分卡片区域 ====================
+    # ==================== 今日操作信号（主视觉） ====================
     st.markdown("---")
-    st.subheader("📊 当前评分")
+    st.header("📊 今日操作信号")
+    
+    latest_dates = []
+    for key in scores:
+        if data.get(key) is not None and not data[key].empty:
+            latest_dates.append(data[key]['date'].max())
+    last_dt = max(latest_dates).strftime('%Y-%m-%d') if latest_dates else "未知"
+    st.caption(f"数据更新于 {last_dt} | 绿色=买入信号 | 黄色=观望 | 红色=暂停")
+    
+    grade_cfg = {
+        'S': {'color': '#00FF88', 'bg': 'rgba(0,255,136,0.08)', 'action': '强烈买入', 'desc': '极度超卖，历史高胜率'},
+        'A': {'color': '#88FF00', 'bg': 'rgba(136,255,0,0.08)', 'action': '积极买入', 'desc': '严重超卖，信号可靠'},
+        'B': {'color': '#FFD700', 'bg': 'rgba(255,215,0,0.08)', 'action': '适度买入', 'desc': '中度低估，可分批建仓'},
+        'C': {'color': '#FF8C00', 'bg': 'rgba(255,140,0,0.08)', 'action': '谨慎参与', 'desc': '轻度低估，小额试探'},
+        'D': {'color': '#FF6B6B', 'bg': 'rgba(255,107,107,0.08)', 'action': '持有观望', 'desc': '估值中性，等待更好时机'},
+        'F': {'color': '#FF4444', 'bg': 'rgba(255,68,68,0.08)', 'action': '暂停买入', 'desc': '估值偏高，不建议入场'},
+    }
 
-    cols = st.columns(len(scores))
+    cols = st.columns(3)
     for i, (key, info) in enumerate(scores.items()):
         with cols[i]:
+            score = info['score']
+            grade = allocation_engine.get_grade(score)
+            g = grade_cfg.get(grade, grade_cfg['C'])
+            
             # 获取分配金额
             amount = 0
             for rec in allocation.get("recommendations", []):
                 if rec["index_key"] == key:
                     amount = rec["amount"]
                     break
+            
+            # 大号信号卡片
+            signal_strength = min(int(score / 20), 5)
+            bars = "●" * signal_strength + "○" * (5 - signal_strength)
+            
+            buy_action = "✅ 建议买入" if grade in ['S', 'A', 'B'] else ("⚠️ 少量参与" if grade == 'C' else "⛔ 暂不建议")
+            
+            st.markdown(f"""
+            <div style='border: 2px solid {g["color"]}; border-radius: 16px; padding: 20px 15px; 
+                        background: {g["bg"]}; text-align: center; min-height: 320px;'>
+                <h3 style='margin:0; color:{g["color"]};'>{info['name']}</h3>
+                <div style='font-size: 56px; font-weight: 900; color:{g["color"]}; margin: 8px 0; line-height:1;'>
+                    {grade}</div>
+                <div style='font-size: 22px; font-weight: bold; color:{g["color"]}; margin-bottom: 6px;'>
+                    {g["action"]}</div>
+                <p style='font-size:13px; opacity:0.8; margin:4px 0;'>{g["desc"]}</p>
+                <div style='background: {g["color"]}22; border-radius: 8px; padding: 10px; margin: 10px 0;'>
+                    <span style='font-size: 24px; font-weight: bold; color:{g["color"]};'>{score:.0f}</span>
+                    <span style='font-size: 14px;'> 分</span>
+                </div>
+                <p style='margin: 4px 0;'>💰 建议: ¥{amount:.0f}</p>
+                <p style='margin: 4px 0; font-size: 16px; color:{g["color"]};'>{bars}</p>
+                <p style='margin: 4px 0; font-weight: bold; color:{g["color"]};'>{buy_action}</p>
+            </div>
+            """, unsafe_allow_html=True)
 
-            # 颜色
-            color = allocation_engine.get_color(info["score"])
-
-            st.metric(
-                label=f"{info['name']} ({info['grade']}级)",
-                value=f"{info['score']:.1f}分",
-                delta=f"建议: ¥{amount:.0f}",
-            )
-            st.progress(min(info["score"] / 100, 1.0))
+    # 总额摘要
+    st.markdown(f"<h3 style='text-align: center; color: {THEMES[st.session_state.theme]['accent']};'>本月建议定投总额: ¥{allocation['total_amount']:.2f}</h3>", unsafe_allow_html=True)
+    
+    # 三指数信号快速总结
+    grade_summary = " | ".join([f"{INDICES[k]['name']}: <span style='color:{grade_cfg.get(scores[k]['grade'],{}).get('color','#888')}'>{scores[k]['grade']}级 {scores[k]['score']:.0f}分</span>" for k in scores])
+    st.markdown(f"<p style='text-align: center;'>{grade_summary}</p>", unsafe_allow_html=True)
 
     # ==================== 评分趋势图 ====================
     st.markdown("---")
@@ -555,112 +597,7 @@ def main():
         fig = ChartComponents.create_technical_subplots(data[selected])
         st.plotly_chart(fig, use_container_width=True)
 
-    # ==================== 资金分配 ====================
-    st.markdown("---")
-    st.subheader(" 本月定投建议")
-
-    col1, col2 = st.columns([2, 1])
-
-    with col1:
-        # 分配详情
-        if allocation["recommendations"]:
-            rec_data = []
-            for rec in allocation["recommendations"]:
-                rec_data.append({
-                    "标的": INDICES[rec["index_key"]]["name"],
-                    "评分": f"{rec['score']:.1f}",
-                    "等级": rec["grade"],
-                    "倍数": f"{rec['multiplier']}x",
-                    "金额": f"¥{rec['amount']:.2f}",
-                    "占比": f"{rec['ratio']}%",
-                })
-
-            st.dataframe(
-                pd.DataFrame(rec_data),
-                use_container_width=True,
-                hide_index=True,
-            )
-        else:
-            st.warning(allocation.get("message", "暂无投资建议"))
-
-    with col2:
-        # 饼图
-        if allocation["recommendations"]:
-            fig = ChartComponents.create_allocation_pie(allocation["recommendations"])
-            st.plotly_chart(fig, use_container_width=True)
-
-    # 总金额
-    st.markdown(f"<h3 style='text-align: center; color: {THEMES[st.session_state.theme]['accent']};'>本月建议定投总额: ¥{allocation['total_amount']:.2f}</h3>", unsafe_allow_html=True)
-
-    # ==================== 每日操作指令 ====================
-    st.markdown("---")
-    st.subheader("📅 每日操作指令（经过历史验证）")
-    
-    # 初始化经过验证的每日信号引擎
-    from engine.validated_daily_signal import create_validated_signal_engine
-    validated_engine = create_validated_signal_engine(weights=custom_weights)
-    
-    # 获取每个标的的实际分配金额
-    allocation_amounts = {}
-    for rec in allocation.get("recommendations", []):
-        allocation_amounts[rec["index_key"]] = rec["amount"]
-    
-    for key, info in scores.items():
-        with st.expander(f"{info['name']} - 操作详情", expanded=True):
-            # 获取当前评分
-            current_score = info['score']
-            
-            # 获取历史评分（用于计算变化）
-            previous_score = None
-            if data.get(key) is not None and len(data[key]) > 1:
-                previous_score = data[key].iloc[-2].get('score', current_score)
-            
-            # 获取当前价格
-            current_price = None
-            previous_price = None
-            if data.get(key) is not None and len(data[key]) > 1:
-                current_price = data[key].iloc[-1]['close']
-                previous_price = data[key].iloc[-2]['close']
-            
-            # 生成经过验证的每日信号
-            signal = validated_engine.generate_daily_signal(
-                index_key=key,
-                index_name=info['name'],
-                current_score=current_score,
-                previous_score=previous_score,
-                current_price=current_price,
-                previous_price=previous_price
-            )
-            
-            # 使用实际分配金额替代独立的建议金额
-            actual_amount = allocation_amounts.get(key, 0)
-            
-            # 显示操作指令
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("当前评分", f"{signal['current_score']:.1f}分", 
-                         f"{signal['score_change']:+.1f}" if signal['score_change'] != 0 else None)
-            
-            with col2:
-                st.metric("评级等级", signal['grade'], 
-                         f"历史胜率: {signal['historical_win_rate']*100:.0f}%")
-            
-            with col3:
-                st.metric("建议金额", f"${actual_amount:.0f}", 
-                         f"倍数: {signal['multiplier']}x")
-            
-            # 显示历史验证信息
-            st.info(f"**{signal['action']}** - {signal['description']}\n\n"
-                   f"📊 **历史验证数据**: 该等级历史胜率 {signal['historical_win_rate']*100:.0f}%, "
-                   f"预期5日收益 {signal['expected_return_5d']*100:+.2f}%\n\n"
-                   f"💰 **实际分配金额**: ${actual_amount:.0f} (基于月度总额${allocation['total_amount']:.0f}按比例分配)")
-            
-            # 显示具体操作建议
-            for instruction in signal['instructions']:
-                st.write(instruction)
-    
-    # ==================== 多因子雷达图 ====================
+    # ==================== 历史回测（折叠） ====================
     st.markdown("---")
     st.subheader("🎯 多因子对比")
 
