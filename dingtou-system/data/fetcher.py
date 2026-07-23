@@ -34,9 +34,14 @@ class DataFetcher:
             proxy_url: 代理地址
         """
         self.indices = {
-            "kc50": {"name": "科创50", "code": "000688", "csindex_code": "000688"},
-            "zxhl": {"name": "中证红利", "code": "000922", "csindex_code": "000922"},
-            "hldb": {"name": "红利低波", "code": "H30269", "csindex_code": "H30269"},
+            "kc50": {"name": "科创50", "code": "000688", "csindex_code": "000688",
+                     "em_secid": "1.000688", "sina_code": "sh000688"},
+            "zxhl": {"name": "中证红利", "code": "000922", "csindex_code": "000922",
+                     "em_secid": "1.000922", "sina_code": "sh000922",
+                     "em_etf": "1.515180"},  # 华泰柏瑞中证红利ETF
+            "hldb": {"name": "红利低波", "code": "H30269", "csindex_code": "H30269",
+                     "em_secid": "1.512890", "sina_code": "sh512890",
+                     "em_etf": "1.512890"},  # 华泰柏瑞红利低波ETF
         }
         self.use_proxy = use_proxy
         self.proxy_url = proxy_url
@@ -73,7 +78,16 @@ class DataFetcher:
         except Exception as e:
             print(f"[!] akshare获取 {symbol} 失败: {e}")
 
-        # 尝试2: 中证指数官网
+        # 尝试2: 新浪财经API
+        try:
+            df = self._fetch_from_sina(symbol, start_date, end_date)
+            if df is not None and not df.empty:
+                print(f"[OK] 从新浪财经获取 {symbol} 数据成功")
+                return df
+        except Exception as e:
+            print(f"[!] 新浪财经获取 {symbol} 失败: {e}")
+
+        # 尝试3: 中证指数官网
         try:
             df = self._fetch_from_csindex(symbol, start_date, end_date)
             if df is not None and not df.empty:
@@ -82,7 +96,7 @@ class DataFetcher:
         except Exception as e:
             print(f"[!] 中证指数获取 {symbol} 失败: {e}")
 
-        # 尝试3: East Money K-line API
+        # 尝试4: East Money K-line API
         try:
             df = self._fetch_from_eastmoney(symbol, start_date, end_date)
             if df is not None and not df.empty:
@@ -177,16 +191,26 @@ class DataFetcher:
     def _fetch_from_eastmoney(self, symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
         """
         从East Money K-line API获取数据
-        注意：此API可能有反爬虫限制
+        使用预配置的secid映射确保获取正确的指数/ETF数据
         """
         try:
-            # East Money K-line API
-            # secid: 0=深圳, 1=上海
-            # 中证指数（000xxx, H开头）使用上海前缀
-            if symbol.startswith(("6", "000", "H")):
-                secid = f"1.{symbol}"
-            else:
-                secid = f"0.{symbol}"
+            # 查找对应的secid（优先用预配置映射）
+            secid = None
+            for idx_cfg in self.indices.values():
+                if idx_cfg["code"] == symbol or idx_cfg.get("csindex_code") == symbol:
+                    secid = idx_cfg.get("em_secid")
+                    break
+            if not secid:
+                # 兜底：尝试ETF secid
+                for idx_cfg in self.indices.values():
+                    if idx_cfg["code"] == symbol:
+                        secid = idx_cfg.get("em_etf", idx_cfg.get("em_secid"))
+                        break
+            if not secid:
+                if symbol.startswith(("6", "000", "H")):
+                    secid = f"1.{symbol}"
+                else:
+                    secid = f"0.{symbol}"
             
             url = (
                 f"http://push2his.eastmoney.com/api/qt/stock/kline/get"
@@ -233,6 +257,73 @@ class DataFetcher:
             
         except Exception as e:
             print(f"East Money获取失败: {e}")
+            return None
+
+    def _fetch_from_sina(self, symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
+        """
+        从新浪财经 API 获取指数历史日线数据
+        
+        API: https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData
+        参数: symbol=sh000922, scale=240 (日线), datalen=2000 (最大条数)
+        """
+        try:
+            # 查找sina代码
+            sina_code = None
+            for idx_cfg in self.indices.values():
+                if idx_cfg["code"] == symbol:
+                    sina_code = idx_cfg.get("sina_code")
+                    break
+            if not sina_code:
+                return None
+
+            # 计算需要的条数（日线数据）
+            start = pd.to_datetime(start_date)
+            end = pd.to_datetime(end_date) if end_date else pd.to_datetime(datetime.now())
+            days = (end - start).days
+            datalen = min(days + 100, 2000)  # 最多2000条
+
+            url = (
+                f"http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"
+                f"CN_MarketData.getKLineData"
+                f"?symbol={sina_code}&scale=240&ma=no&datalen={datalen}"
+            )
+
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.0",
+                "Referer": "https://finance.sina.com.cn/",
+            }
+
+            response = requests.get(url, headers=headers, timeout=15)
+            response.raise_for_status()
+            
+            data = response.json()
+            if not data or not isinstance(data, list):
+                return None
+
+            records = []
+            for item in data:
+                records.append({
+                    "date": item["day"],
+                    "open": float(item["open"]),
+                    "high": float(item["high"]),
+                    "low": float(item["low"]),
+                    "close": float(item["close"]),
+                    "volume": float(item["volume"]),
+                    "amount": 0,
+                })
+
+            if records:
+                df = pd.DataFrame(records)
+                df["date"] = pd.to_datetime(df["date"])
+                df = df.sort_values("date").reset_index(drop=True)
+                # 按日期范围过滤
+                df = df[(df["date"] >= start) & (df["date"] <= end)]
+                return df
+
+            return None
+
+        except Exception as e:
+            print(f"新浪财经获取失败: {e}")
             return None
 
     def fetch_all_indices(
