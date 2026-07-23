@@ -235,6 +235,21 @@ def load_filtered_data(force_refresh: bool = False):
                 cache.save(key, df)
                 print(f"  [OK] {key} 缓存已更新 ({len(df)} 条)")
 
+            # 尝试从在线API追加最新交易日数据
+            try:
+                last_date = df['date'].max()
+                today_str = pd.Timestamp.now().strftime('%Y%m%d')
+                if pd.Timestamp.now() - last_date > pd.Timedelta(days=0):
+                    from_d = (last_date + pd.Timedelta(days=1)).strftime('%Y%m%d')
+                    new_df = _fetch_incremental(info["code"], from_d, today_str)
+                    if new_df is not None and not new_df.empty:
+                        df = pd.concat([df, new_df], ignore_index=True)
+                        df = df.drop_duplicates('date').sort_values('date')
+                        cache.save(key, df)
+                        print(f"  [SYNC] 在线追加 {len(new_df)} 条新数据")
+            except Exception as e:
+                print(f"  [SYNC] 在线更新跳过: {e}")
+
             df = TechnicalIndicators.calculate_all(df)
             data[key] = df
 
@@ -253,6 +268,76 @@ def load_filtered_data(force_refresh: bool = False):
                 data[key] = None
 
     return data
+
+
+def _fetch_incremental(symbol: str, from_date: str, to_date: str) -> pd.DataFrame | None:
+    """
+    从在线API获取增量数据
+    优先新浪财经，其次East Money
+    """
+    import requests
+    headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://finance.sina.com.cn/"}
+    
+    # 新浪代码映射
+    sina_map = {
+        "000688": "sh000688",
+        "000922": "sh000922",
+        "H30269": "sh512890",  # 红利低波ETF代理
+    }
+    
+    sina_code = sina_map.get(symbol)
+    if sina_code:
+        try:
+            start = pd.to_datetime(from_date)
+            end = pd.to_datetime(to_date)
+            days = (end - start).days + 10
+            datalen = min(int(days * 1.5), 1000)
+            url = (f"http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"
+                   f"CN_MarketData.getKLineData?symbol={sina_code}&scale=240&ma=no&datalen={datalen}")
+            r = requests.get(url, headers=headers, timeout=15)
+            data = r.json()
+            if data and isinstance(data, list):
+                records = []
+                for item in data:
+                    d = pd.to_datetime(item["day"])
+                    if d >= pd.to_datetime(from_date):
+                        records.append({
+                            "date": d, "open": float(item["open"]),
+                            "high": float(item["high"]), "low": float(item["low"]),
+                            "close": float(item["close"]), "volume": float(item["volume"])
+                        })
+                if records:
+                    return pd.DataFrame(records).sort_values("date")
+        except:
+            pass
+    
+    # East Money 兜底
+    em_map = {"000688": "1.000688", "000922": "1.000922", "H30269": "1.512890"}
+    secid = em_map.get(symbol)
+    if secid:
+        try:
+            url = (f"https://push2his.eastmoney.com/api/qt/stock/kline/get"
+                   f"?secid={secid}&fields1=f1,f2,f3,f4,f5,f6"
+                   f"&fields2=f51,f52,f53,f54,f55,f56"
+                   f"&klt=101&fqt=1&beg={from_date}&end={to_date}&_=0")
+            r = requests.get(url, headers=headers, timeout=10)
+            data = r.json()
+            if data.get("data") and data["data"].get("klines"):
+                records = []
+                for line in data["data"]["klines"]:
+                    parts = line.split(",")
+                    records.append({
+                        "date": pd.to_datetime(parts[0]),
+                        "open": float(parts[1]), "close": float(parts[2]),
+                        "high": float(parts[3]), "low": float(parts[4]),
+                        "volume": float(parts[5])
+                    })
+                if records:
+                    return pd.DataFrame(records).sort_values("date")
+        except:
+            pass
+    
+    return None
 
 
 def calculate_scores(data, weights=None):
