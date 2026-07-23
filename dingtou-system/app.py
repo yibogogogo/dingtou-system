@@ -14,14 +14,13 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-from data.fetcher import DataFetcher
 from data.cache import DataCache
 from engine.indicators import TechnicalIndicators
 from engine.scoring import ScoringEngine
 from engine.allocation import AllocationEngine
 from engine.backtest import BacktestEngine
 from engine.backtest_optimizer import RealisticDataGenerator
-from engine.daily_signal import DailySignalEngine, InvestmentCalendar
+from engine.daily_signal import InvestmentCalendar
 from ui.charts import ChartComponents
 from config import INDICES, INVESTMENT
 
@@ -172,46 +171,86 @@ def apply_theme(theme_name: str):
     st.markdown(css, unsafe_allow_html=True)
 
 
-@st.cache_data(ttl=3600)
-def load_data(force_refresh=False):
-    """加载数据（带缓存）
+# Excel文件映射（数据主源）
+EXCEL_FILES = {
+    "kc50": "000688perf科创50.xlsx",
+    "zxhl": "000922perf中证红利.xlsx",
+    "hldb": "H30269perf红利低波.xlsx",
+}
+
+
+def load_filtered_data(force_refresh: bool = False):
+    """
+    加载数据：Excel为主源（含代码过滤），缓存为速度辅助
     
     Args:
-        force_refresh: 是否强制刷新（忽略缓存）
+        force_refresh: True=忽略缓存强制从Excel重新加载
     """
-    fetcher = DataFetcher()
     cache = DataCache()
-
     data = {}
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # D:\红利
+
     for key, info in INDICES.items():
         try:
-            # 检查缓存是否存在且未过期（默认1天）
-            use_cache = cache.exists(key) and not cache.is_stale(key, max_age_days=1) and not force_refresh
-            
+            filename = EXCEL_FILES.get(key)
+            if not filename:
+                data[key] = None
+                continue
+            file_path = os.path.join(base_dir, filename)
+
+            # 检查缓存是否有效（比Excel文件更新）
+            use_cache = (not force_refresh and cache.exists(key)
+                         and os.path.exists(file_path)
+                         and os.path.getmtime(file_path) < os.path.getmtime(cache._get_cache_path(key)))
+
             if use_cache:
                 df = cache.load(key)
-                print(f"[CACHE] 从本地缓存加载 {key}")
+                print(f"[CACHE] 从缓存加载 {key} ({len(df)} 条)")
             else:
-                # 尝试从网络获取最新数据
-                print(f"[FETCH] 从网络获取 {key} 数据...")
-                df = fetcher.fetch_index_history(info["code"], start_date="20220101")
-                if df is not None and not df.empty:
-                    cache.save(key, df)
-                    print(f"[OK] {key} 数据已更新并缓存")
-                else:
-                    # 网络获取失败，尝试使用缓存（即使过期）
-                    if cache.exists(key):
-                        print(f"[WARN] 网络获取失败，使用过期缓存 {key}")
-                        df = cache.load(key)
-                    else:
-                        raise ValueError(f"无法获取 {key} 数据")
+                # 从Excel加载并过滤
+                print(f"[EXCEL] 从文件加载 {key} ...")
+                raw = pd.read_excel(file_path)
+                columns = raw.columns.tolist()
+                if len(columns) < 13:
+                    raise ValueError(f"格式异常，仅{len(columns)}列")
 
-            # 计算技术指标
+                # 按文件名中的指数代码过滤
+                code_col = columns[1]
+                raw[code_col] = raw[code_col].astype(str)
+                code_match = re.match(r'([A-Z0-9]+)', os.path.basename(file_path).split('perf')[0])
+                correct_code = code_match.group(1).lstrip('0') or '0' if code_match else None
+                if correct_code:
+                    before = len(raw)
+                    raw = raw[raw[code_col] == correct_code].copy()
+                    print(f"  [FILTER] 代码={correct_code}, {before}→{len(raw)} 行")
+
+                raw['date'] = pd.to_datetime(raw[columns[0]].astype(str))
+                raw['close'] = raw[columns[9]]
+                raw['open'] = raw[columns[6]].fillna(raw['close'])
+                raw['high'] = raw[columns[7]].fillna(raw['close'])
+                raw['low'] = raw[columns[8]].fillna(raw['close'])
+                raw['volume'] = raw[columns[12]].fillna(0)
+
+                df = raw[['date', 'open', 'high', 'low', 'close', 'volume']].copy()
+                cache.save(key, df)
+                print(f"  [OK] {key} 缓存已更新 ({len(df)} 条)")
+
             df = TechnicalIndicators.calculate_all(df)
             data[key] = df
+
         except Exception as e:
-            print(f"加载 {info['name']} 数据失败: {e}")
-            data[key] = None
+            print(f"[ERROR] 加载 {info['name']}: {e}")
+            # 兜底：尝试缓存
+            try:
+                if cache.exists(key):
+                    df = cache.load(key)
+                    df = TechnicalIndicators.calculate_all(df)
+                    data[key] = df
+                    print(f"[FALLBACK] 使用过期缓存 {key}")
+                else:
+                    data[key] = None
+            except:
+                data[key] = None
 
     return data
 
@@ -373,83 +412,23 @@ def main():
         
         st.markdown("---")
         if st.button("🔄 刷新数据（重新从Excel加载）"):
-            # 清除所有缓存
             cache = DataCache()
             cache.clear()
-            st.cache_data.clear()
+            st.session_state.force_refresh = True
             st.rerun()
 
-    # 加载数据
+    # 加载数据（Excel为主源，缓存辅助）
+    force = st.session_state.pop('force_refresh', False)
     with st.spinner("正在加载数据..."):
-        data = load_data()
+        data = load_filtered_data(force_refresh=force)
 
     # 显示数据更新信息
-    cache = DataCache()
     for key, info in INDICES.items():
         if data.get(key) is not None and not data[key].empty:
             last_date = data[key]['date'].max()
-            st.sidebar.markdown(f"<small>{info['name']}: 数据至 {last_date.strftime('%Y-%m-%d')}</small>", unsafe_allow_html=True)
+            st.sidebar.markdown(f"<small>{info['name']}: {last_date.strftime('%Y-%m-%d')}</small>", unsafe_allow_html=True)
 
-    # 如果数据加载失败，使用真实Excel数据
-    if not data or all(v is None for v in data.values()):
-        st.warning("尝试加载真实Excel数据...")
-        data = {}
-        for key, info in INDICES.items():
-            try:
-                # 加载真实Excel数据
-                if key == "kc50":
-                    file_path = "../000688perf科创50.xlsx"
-                elif key == "zxhl":
-                    file_path = "../000922perf中证红利.xlsx"
-                elif key == "hldb":
-                    file_path = "../H30269perf红利低波.xlsx"
-                else:
-                    continue
-                    
-                df = pd.read_excel(file_path)
-                columns = df.columns.tolist()
-                
-                # 验证列索引 - Excel文件格式检查
-                if len(columns) < 13:
-                    st.error(f"{info['name']} Excel文件格式异常：仅有{len(columns)}列，期望至少13列")
-                    data[key] = None
-                    continue
-                
-                # 按指数代码过滤（Excel文件可能混入其他指数数据）
-                index_code_col = columns[1]
-                df[index_code_col] = df[index_code_col].astype(str)
-                # 从文件名提取正确的指数代码，处理前导零问题
-                code_match = re.match(r'([A-Z0-9]+)', os.path.basename(file_path).split('perf')[0])
-                if code_match:
-                    raw_code = code_match.group(1)
-                    # 数值型代码可能有前导零（文件名000922 vs 数据922）
-                    correct_code = raw_code.lstrip('0') or '0'
-                    df = df[df[index_code_col] == correct_code].copy()
-                
-                if len(df) == 0:
-                    st.error(f"{info['name']} 未找到正确的指数代码数据")
-                    data[key] = None
-                    continue
-                
-                # 转换数据格式
-                df['date'] = pd.to_datetime(df[columns[0]].astype(str))
-                df['close'] = df[columns[9]]
-                
-                # 添加其他必要列
-                df['open'] = df[columns[6]].fillna(df['close'])  # 全收益指数可能缺失OHLC
-                df['high'] = df[columns[7]].fillna(df['close'])
-                df['low'] = df[columns[8]].fillna(df['close'])
-                df['volume'] = df[columns[12]].fillna(0)
-                
-                # 计算技术指标
-                df = TechnicalIndicators.calculate_all(df)
-                data[key] = df
-                
-            except Exception as e:
-                st.warning(f"加载 {info['name']} 真实数据失败")
-                data[key] = None
-    
-    # 如果真实数据也失败，使用模拟数据
+    # 如果数据加载失败，使用模拟数据
     if not data or all(v is None for v in data.values()):
         st.warning("使用模拟数据进行演示...")
         data = generate_mock_data()
