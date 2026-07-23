@@ -498,7 +498,7 @@ def main():
     for i, (key, info) in enumerate(scores.items()):
         with cols[i]:
             score = info['score']
-            grade = allocation_engine.get_grade(score)
+            grade = info['grade']
             g = grade_cfg.get(grade, grade_cfg['C'])
             
             # 获取分配金额
