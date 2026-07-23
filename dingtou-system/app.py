@@ -278,11 +278,11 @@ def _fetch_incremental(symbol: str, from_date: str, to_date: str) -> pd.DataFram
     import requests
     headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://finance.sina.com.cn/"}
     
-    # 新浪代码映射
+    # 新浪代码映射（仅可直接获取指数值的代码，ETF代理不混用）
     sina_map = {
         "000688": "sh000688",
         "000922": "sh000922",
-        "H30269": "sh512890",  # 红利低波ETF代理
+        # H30269 无直接指数源，ETF(512890)价格尺度不符，不启用在线更新
     }
     
     sina_code = sina_map.get(symbol)
@@ -312,7 +312,7 @@ def _fetch_incremental(symbol: str, from_date: str, to_date: str) -> pd.DataFram
             pass
     
     # East Money 兜底
-    em_map = {"000688": "1.000688", "000922": "1.000922", "H30269": "1.512890"}
+    em_map = {"000688": "1.000688", "000922": "1.000922"}
     secid = em_map.get(symbol)
     if secid:
         try:
@@ -511,20 +511,27 @@ def main():
     for key, info in INDICES.items():
         if data.get(key) is not None and not data[key].empty:
             last_date = data[key]['date'].max()
-            st.sidebar.markdown(f"<small>{info['name']}: {last_date.strftime('%Y-%m-%d')}</small>", unsafe_allow_html=True)
+            df = data[key]
+            close_now = df['close'].iloc[-1]
+            days_old = (datetime.now() - pd.to_datetime(last_date)).days
+            
+            # 在线源状态
+            online_ok = key in ["kc50", "zxhl"]  # hldb无可靠在线指数源
+            status = "🟢" if days_old <= 1 else ("🟡" if days_old <= 3 else "🔴")
+            sync_note = " (在线同步)" if online_ok else " (仅Excel)"
+            
+            st.sidebar.markdown(
+                f"<small>{status} <b>{info['name']}</b> {last_date.strftime('%Y-%m-%d')}"
+                f"{sync_note}<br>"
+                f"&nbsp;&nbsp;&nbsp;收盘: {close_now:.2f} | 共 {len(df)} 条</small>",
+                unsafe_allow_html=True)
+            
+            if days_old > 3:
+                st.sidebar.warning(f"⚠️ {info['name']} 已过期 {days_old} 天")
 
-    # 如果数据加载失败，使用模拟数据
     if not data or all(v is None for v in data.values()):
         st.warning("使用模拟数据进行演示...")
         data = generate_mock_data()
-
-    # 检查数据时效性
-    for key, info in INDICES.items():
-        if data.get(key) is not None and not data[key].empty:
-            last_date = data[key]['date'].max()
-            days_old = (datetime.now() - pd.to_datetime(last_date)).days
-            if days_old > 3:
-                st.sidebar.warning(f"⚠️ {info['name']} 数据已过期 {days_old} 天，建议刷新")
 
     if not data or all(v is None for v in data.values()):
         st.error("数据加载失败，请检查网络连接或稍后重试")
