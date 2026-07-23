@@ -4,7 +4,6 @@ Streamlit主应用 - v2.1 重新设计版
 """
 import sys
 import os
-import re
 
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -171,137 +170,67 @@ def apply_theme(theme_name: str):
     st.markdown(css, unsafe_allow_html=True)
 
 
-# Excel文件映射（数据主源）
-EXCEL_FILES = {
-    "kc50": "000688perf科创50.xlsx",
-    "zxhl": "000922perf中证红利.xlsx",
-    # hldb: 使用易方达红利低波ETF(563020)在线源，无需Excel
+# ETF Sina代码映射（全部使用易方达ETF在线数据）
+SINA_ETF = {
+    "kc50": "sh588080",
+    "zxhl": "sh515180",
+    "hldb": "sh563020",
 }
 
 
 def load_filtered_data(force_refresh: bool = False):
     """
-    加载数据：Excel为主源（含代码过滤），缓存为速度辅助
-    
-    Args:
-        force_refresh: True=忽略缓存强制从Excel重新加载
+    加载数据：全部ETF在线数据 + 缓存
+    每次启动自动追加最新交易日
     """
     cache = DataCache()
     data = {}
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # D:\红利
 
     for key, info in INDICES.items():
         try:
-            # 红利低波：直接使用易方达ETF(563020)在线数据
-            if key == "hldb":
-                use_cache = not force_refresh and cache.exists(key)
-                if use_cache:
-                    df = cache.load(key)
-                    print(f"[CACHE] 从缓存加载 563020 ({len(df)} 条)")
-                else:
-                    df = _fetch_full_sina("sh563020", "20240101")
-                    if df is not None and not df.empty:
-                        cache.save(key, df)
-                        print(f"[ONLINE] 563020 在线加载 ({len(df)} 条)")
-                    elif cache.exists(key):
-                        df = cache.load(key)
-                        print(f"[FALLBACK] 563020 在线失败，使用缓存")
-                    else:
-                        data[key] = None
-                        continue
-
-                # 在线同步最新数据
-                try:
-                    last_date = df['date'].max()
-                    if pd.Timestamp.now() - last_date > pd.Timedelta(days=0):
-                        new_df = _fetch_sina_data("sh563020", 
-                            (last_date + pd.Timedelta(days=1)).strftime('%Y%m%d'),
-                            pd.Timestamp.now().strftime('%Y%m%d'))
-                        if new_df is not None and not new_df.empty:
-                            df = pd.concat([df, new_df], ignore_index=True)
-                            df = df.drop_duplicates('date').sort_values('date')
-                            cache.save(key, df)
-                            print(f"  [SYNC] 563020 追加 {len(new_df)} 条新数据")
-                except Exception as e:
-                    print(f"  [SYNC] 563020 在线更新跳过: {e}")
-
-                df = TechnicalIndicators.calculate_all(df)
-                data[key] = df
-                continue
-
-            filename = EXCEL_FILES.get(key)
-            if not filename:
-                data[key] = None
-                continue
-            file_path = os.path.join(base_dir, filename)
-
-            # 检查缓存是否有效（比Excel文件更新）
-            use_cache = (not force_refresh and cache.exists(key)
-                         and os.path.exists(file_path)
-                         and os.path.getmtime(file_path) < os.path.getmtime(cache._get_cache_path(key)))
+            sina_code = SINA_ETF[key]
+            use_cache = not force_refresh and cache.exists(key)
 
             if use_cache:
                 df = cache.load(key)
-                print(f"[CACHE] 从缓存加载 {key} ({len(df)} 条)")
+                print(f"[CACHE] {info['name']} ({len(df)} 条)")
             else:
-                # 从Excel加载并过滤
-                print(f"[EXCEL] 从文件加载 {key} ...")
-                raw = pd.read_excel(file_path)
-                columns = raw.columns.tolist()
-                if len(columns) < 13:
-                    raise ValueError(f"格式异常，仅{len(columns)}列")
+                df = _fetch_full_sina(sina_code)
+                if df is not None and not df.empty:
+                    cache.save(key, df)
+                    print(f"[ONLINE] {info['name']} ({len(df)} 条)")
+                elif cache.exists(key):
+                    df = cache.load(key)
+                    print(f"[FALLBACK] {info['name']} 使用缓存")
+                else:
+                    data[key] = None
+                    continue
 
-                # 按文件名中的指数代码过滤
-                code_col = columns[1]
-                raw[code_col] = raw[code_col].astype(str)
-                code_match = re.match(r'([A-Z0-9]+)', os.path.basename(file_path).split('perf')[0])
-                correct_code = code_match.group(1).lstrip('0') or '0' if code_match else None
-                if correct_code:
-                    before = len(raw)
-                    raw = raw[raw[code_col] == correct_code].copy()
-                    print(f"  [FILTER] 代码={correct_code}, {before}→{len(raw)} 行")
-
-                raw['date'] = pd.to_datetime(raw[columns[0]].astype(str))
-                raw['close'] = raw[columns[9]]
-                raw['open'] = raw[columns[6]].fillna(raw['close'])
-                raw['high'] = raw[columns[7]].fillna(raw['close'])
-                raw['low'] = raw[columns[8]].fillna(raw['close'])
-                raw['volume'] = raw[columns[12]].fillna(0)
-
-                df = raw[['date', 'open', 'high', 'low', 'close', 'volume']].copy()
-                cache.save(key, df)
-                print(f"  [OK] {key} 缓存已更新 ({len(df)} 条)")
-
-            # 尝试从在线API追加最新交易日数据
+            # 在线追加最新数据
             try:
                 last_date = df['date'].max()
-                today_str = pd.Timestamp.now().strftime('%Y%m%d')
                 if pd.Timestamp.now() - last_date > pd.Timedelta(days=0):
                     from_d = (last_date + pd.Timedelta(days=1)).strftime('%Y%m%d')
-                    sina_lookup = {"000688": "sh000688", "000922": "sh000922"}
-                    sina_code = sina_lookup.get(info["code"])
-                    if sina_code:
-                        new_df = _fetch_sina_data(sina_code, from_d, today_str)
+                    to_d = pd.Timestamp.now().strftime('%Y%m%d')
+                    new_df = _fetch_sina_data(sina_code, from_d, to_d)
                     if new_df is not None and not new_df.empty:
                         df = pd.concat([df, new_df], ignore_index=True)
                         df = df.drop_duplicates('date').sort_values('date')
                         cache.save(key, df)
-                        print(f"  [SYNC] 在线追加 {len(new_df)} 条新数据")
+                        print(f"  [SYNC] {info['name']} +{len(new_df)} 条")
             except Exception as e:
-                print(f"  [SYNC] 在线更新跳过: {e}")
+                pass
 
             df = TechnicalIndicators.calculate_all(df)
             data[key] = df
 
         except Exception as e:
-            print(f"[ERROR] 加载 {info['name']}: {e}")
-            # 兜底：尝试缓存
+            print(f"[ERROR] {info['name']}: {e}")
             try:
                 if cache.exists(key):
                     df = cache.load(key)
                     df = TechnicalIndicators.calculate_all(df)
                     data[key] = df
-                    print(f"[FALLBACK] 使用过期缓存 {key}")
                 else:
                     data[key] = None
             except:
@@ -592,7 +521,7 @@ def main():
             days_old = (datetime.now() - pd.to_datetime(last_date)).days
             
             # 在线源状态
-            online_ok = key in ["kc50", "zxhl"]  # hldb无可靠在线指数源
+            online_ok = True  # 全部ETF在线源
             status = "🟢" if days_old <= 1 else ("🟡" if days_old <= 3 else "🔴")
             sync_note = " (在线同步)" if online_ok else " (仅Excel)"
             
