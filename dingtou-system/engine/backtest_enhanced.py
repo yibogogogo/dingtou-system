@@ -137,14 +137,18 @@ class EnhancedBacktestEngine:
 
         # 初始化
         cash = self.initial_capital
+        cumulative_invested = self.initial_capital
         positions = {key: 0.0 for key in data_dict.keys()}
         trades = []
+        dividends = []
         portfolio_values = []
         monthly_scores = []
+        last_div_quarter = None
 
         for trade_date in trading_days:
             # 每月追加定投资金
             cash += self.monthly_invest
+            cumulative_invested += self.monthly_invest
             
             # 获取当日各指数数据
             scores = {}
@@ -194,9 +198,17 @@ class EnhancedBacktestEngine:
                         
                     day_price = price_data["close"].iloc[-1]
 
-                    # 扣除手续费
+                    # 手续费（扣减模式）
                     fee = amount * self.fee_rate
                     invest_amount = amount - fee
+
+                    # 检查资金是否充足
+                    if cash < amount:
+                        if cash <= fee:
+                            continue
+                        amount = cash
+                        fee = amount * self.fee_rate
+                        invest_amount = amount - fee
 
                     # 计算购买份额
                     shares = invest_amount / day_price
@@ -213,6 +225,9 @@ class EnhancedBacktestEngine:
                     })
 
             # 红利再投资（每季度一次）
+            quarter = (trade_date.year, (trade_date.month - 1) // 3)
+            if quarter != last_div_quarter:
+                last_div_quarter = quarter
             if trade_date.month in [3, 6, 9, 12] and trade_date.day <= 5:
                 for key in positions:
                     if positions[key] > 0:
@@ -252,7 +267,7 @@ class EnhancedBacktestEngine:
             })
 
         return self._calculate_metrics(
-            portfolio_values, trades, monthly_scores, start, end
+            portfolio_values, trades, monthly_scores, cumulative_invested, start, end
         )
 
     def _calculate_metrics(
@@ -260,6 +275,7 @@ class EnhancedBacktestEngine:
         portfolio_values: List[Dict],
         trades: List[Dict],
         monthly_scores: List[Dict],
+        cumulative_invested: float,
         start: datetime,
         end: datetime,
     ) -> Dict:
@@ -269,9 +285,7 @@ class EnhancedBacktestEngine:
 
         # 基础指标
         final_value = portfolio_values[-1]["value"]
-        
-        # 交易统计
-        total_invested = sum(t["amount"] for t in trades)
+        total_invested = cumulative_invested
         
         total_return = (final_value - total_invested) / total_invested * 100 if total_invested > 0 else 0
 
@@ -351,7 +365,10 @@ class EnhancedBacktestEngine:
         for value in values:
             if value > peak:
                 peak = value
-            dd = (peak - value) / peak * 100
+            if peak > 0:
+                dd = (peak - value) / peak * 100
+            else:
+                dd = 0.0
             if dd > max_dd:
                 max_dd = dd
 

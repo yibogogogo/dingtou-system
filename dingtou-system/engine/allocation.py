@@ -131,6 +131,11 @@ class AllocationEngine:
         recommendations = []
         total_amount = 0.0
         for index_key, info in capped.items():
+            total_amount += info["amount"]
+
+        # 重新计算实际占比（考虑capping和重新分配后的实际金额）
+        for index_key, info in capped.items():
+            actual_ratio = info["amount"] / total_amount * 100 if total_amount > 0 else 0
             recommendations.append({
                 "index_key": index_key,
                 "score": info["score"],
@@ -138,9 +143,8 @@ class AllocationEngine:
                 "label": self.get_grade_label(info["score"]),
                 "multiplier": info["multiplier"],
                 "amount": round(info["amount"], 2),
-                "ratio": round(info["ratio"] * 100, 2),
+                "ratio": round(actual_ratio, 2),
             })
-            total_amount += info["amount"]
 
         return {
             "total_amount": round(total_amount, 2),

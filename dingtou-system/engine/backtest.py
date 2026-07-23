@@ -55,13 +55,14 @@ class BacktestEngine:
         trading_days = self._get_monthly_trading_days(data_dict, start, end)
 
         # 初始化
-        cash = 0
+        cash = self.initial_capital
         positions = {key: 0.0 for key in data_dict.keys()}
         trades = []
         dividends = []
         portfolio_values = []
-        cumulative_invested = 0
+        cumulative_invested = self.initial_capital
         total_fees = 0
+        last_div_quarter = None
 
         for trade_date in trading_days:
             # 每月追加资金
@@ -94,22 +95,22 @@ class BacktestEngine:
                     df = data_dict[key]
                     day_price = df[df["date"] <= trade_date]["close"].iloc[-1]
 
-                    # 计算手续费
+                    # 手续费（扣减模式，国内基金实际规则）
                     fee = amount * self.fee_rate
-                    total_cost = amount + fee
+                    invest_amount = amount - fee
 
                     # 检查资金是否充足
-                    if cash < total_cost:
+                    if cash < amount:
                         if cash <= fee:
                             continue
-                        amount = cash - fee
+                        amount = cash
                         fee = amount * self.fee_rate
-                        total_cost = amount + fee
+                        invest_amount = amount - fee
 
                     # 计算购买份额
-                    shares = amount / day_price
+                    shares = invest_amount / day_price
                     positions[key] += shares
-                    cash -= total_cost
+                    cash -= amount
                     total_fees += fee
 
                     trades.append({
@@ -122,7 +123,9 @@ class BacktestEngine:
                     })
 
             # 红利再投资（每季度一次，按指数实际股息率）
-            if trade_date.month in [3, 6, 9, 12] and trade_date.day <= 5:
+            quarter = (trade_date.year, (trade_date.month - 1) // 3)
+            if quarter != last_div_quarter:
+                last_div_quarter = quarter
                 for key in positions:
                     if positions[key] > 0:
                         df = data_dict[key]
