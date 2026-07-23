@@ -127,12 +127,13 @@ class ChartComponents:
 
         fig.update_layout(
             title={"text": "评分趋势 (近3个月)", "font": {            "color": ChartComponents.font_color, "size": 18}},
-            paper_bgcolor="#0E1117",
+            paper_bgcolor=ChartComponents.paper_bgcolor,
             plot_bgcolor=ChartComponents.paper_bgcolor,
             font={"color": ChartComponents.font_color},
-            xaxis={"gridcolor": "#333", "showgrid": True},
-            yaxis={"gridcolor": "#333", "showgrid": True, "range": [0, 100]},
+            xaxis={"gridcolor": ChartComponents.grid_color, "showgrid": True, "dtick": "M1", "tickformat": "%m-%d"},
+            yaxis={"gridcolor": ChartComponents.grid_color, "showgrid": True, "range": [0, 100]},
             legend={            "bgcolor": ChartComponents.paper_bgcolor, "bordercolor": ChartComponents.grid_color, "borderwidth": 1},
+            hovermode="x unified",
             height=400,
             margin={"t": 50, "b": 30, "l": 50, "r": 30},
         )
@@ -174,14 +175,20 @@ class ChartComponents:
 
         fig.update_layout(
             title={"text": f"{index_name} 价格走势", "font": {            "color": ChartComponents.font_color, "size": 18}},
-            paper_bgcolor="#0E1117",
+            paper_bgcolor=ChartComponents.paper_bgcolor,
             plot_bgcolor=ChartComponents.paper_bgcolor,
             font={"color": ChartComponents.font_color},
-            xaxis={"gridcolor": "#333", "showgrid": True},
-            yaxis={"gridcolor": "#333", "showgrid": True},
+            xaxis={
+                "gridcolor": ChartComponents.grid_color, "showgrid": True,
+                "dtick": "M3", "tickformat": "%Y-%m",
+                "rangeslider": {"visible": False},
+                "type": "date",
+            },
+            yaxis={"gridcolor": ChartComponents.grid_color, "showgrid": True, "title": "指数点位"},
             legend={            "bgcolor": ChartComponents.paper_bgcolor, "bordercolor": ChartComponents.grid_color},
+            hovermode="x unified",
             height=500,
-            margin={"t": 50, "b": 30, "l": 50, "r": 30},
+            margin={"t": 50, "b": 30, "l": 60, "r": 30},
         )
 
         return fig
@@ -238,7 +245,7 @@ class ChartComponents:
 
         fig.update_layout(
             title={"text": "技术指标面板", "font": {            "color": ChartComponents.font_color, "size": 18}},
-            paper_bgcolor="#0E1117",
+            paper_bgcolor=ChartComponents.paper_bgcolor,
             plot_bgcolor=ChartComponents.paper_bgcolor,
             font={"color": ChartComponents.font_color},
             height=800,
@@ -300,17 +307,17 @@ class ChartComponents:
 
         fig.update_layout(
             title={"text": "多因子雷达图", "font": {            "color": ChartComponents.font_color, "size": 18}},
-            paper_bgcolor="#0E1117",
+            paper_bgcolor=ChartComponents.paper_bgcolor,
             font={"color": ChartComponents.font_color},
             polar={
                 "bgcolor": "#1A1C23",
                 "radialaxis": {
                     "visible": True,
                     "range": [0, 100],
-                    "gridcolor": "#333",
+                    "gridcolor": ChartComponents.grid_color,
                 },
                 "angularaxis": {
-                    "gridcolor": "#333",
+                    "gridcolor": ChartComponents.grid_color,
                 },
             },
             height=500,
@@ -342,7 +349,7 @@ class ChartComponents:
 
         fig.update_layout(
             title={"text": "资金分配", "font": {            "color": ChartComponents.font_color, "size": 18}},
-            paper_bgcolor="#0E1117",
+            paper_bgcolor=ChartComponents.paper_bgcolor,
             font={"color": ChartComponents.font_color},
             height=400,
             showlegend=True,
@@ -374,11 +381,11 @@ class ChartComponents:
 
         fig.update_layout(
             title={"text": "组合价值走势", "font": {            "color": ChartComponents.font_color, "size": 18}},
-            paper_bgcolor="#0E1117",
+            paper_bgcolor=ChartComponents.paper_bgcolor,
             plot_bgcolor=ChartComponents.paper_bgcolor,
             font={"color": ChartComponents.font_color},
-            xaxis={"gridcolor": "#333", "showgrid": True},
-            yaxis={"gridcolor": "#333", "showgrid": True},
+            xaxis={"gridcolor": ChartComponents.grid_color, "showgrid": True},
+            yaxis={"gridcolor": ChartComponents.grid_color, "showgrid": True},
             height=400,
             margin={"t": 50, "b": 30, "l": 50, "r": 30},
         )
@@ -449,11 +456,11 @@ class ChartComponents:
 
         fig.update_layout(
             title={"text": "回测权益曲线", "font": {            "color": ChartComponents.font_color, "size": 18}},
-            paper_bgcolor="#0E1117",
+            paper_bgcolor=ChartComponents.paper_bgcolor,
             plot_bgcolor=ChartComponents.paper_bgcolor,
             font={"color": ChartComponents.font_color},
-            xaxis={"gridcolor": "#333", "showgrid": True},
-            yaxis={"gridcolor": "#333", "showgrid": True},
+            xaxis={"gridcolor": ChartComponents.grid_color, "showgrid": True},
+            yaxis={"gridcolor": ChartComponents.grid_color, "showgrid": True},
             height=450,
             legend={            "bgcolor": ChartComponents.paper_bgcolor, "bordercolor": ChartComponents.grid_color},
             margin={"t": 50, "b": 30, "l": 50, "r": 30},
@@ -496,11 +503,11 @@ class ChartComponents:
 
         fig.update_layout(
             title={"text": "回撤分析", "font": {            "color": ChartComponents.font_color, "size": 18}},
-            paper_bgcolor="#0E1117",
+            paper_bgcolor=ChartComponents.paper_bgcolor,
             plot_bgcolor=ChartComponents.paper_bgcolor,
             font={"color": ChartComponents.font_color},
-            xaxis={"gridcolor": "#333", "showgrid": True},
-            yaxis={"gridcolor": "#333", "showgrid": True, "title": "回撤 (%)", "range": [0, max(drawdown) * 1.2] if len(drawdown) > 0 else [0, 10]},
+            xaxis={"gridcolor": ChartComponents.grid_color, "showgrid": True},
+            yaxis={"gridcolor": ChartComponents.grid_color, "showgrid": True, "title": "回撤 (%)", "range": [0, max(drawdown) * 1.2] if len(drawdown) > 0 else [0, 10]},
             height=350,
             showlegend=False,
             margin={"t": 50, "b": 30, "l": 50, "r": 30},
@@ -562,7 +569,7 @@ class ChartComponents:
 
         fig.update_layout(
             title={"text": "月度收益热力图", "font": {            "color": ChartComponents.font_color, "size": 18}},
-            paper_bgcolor="#0E1117",
+            paper_bgcolor=ChartComponents.paper_bgcolor,
             plot_bgcolor=ChartComponents.paper_bgcolor,
             font={"color": ChartComponents.font_color},
             height=350,
@@ -622,11 +629,11 @@ class ChartComponents:
 
         fig.update_layout(
             title={"text": f"滚动夏普比率 ({window}个月)", "font": {            "color": ChartComponents.font_color, "size": 18}},
-            paper_bgcolor="#0E1117",
+            paper_bgcolor=ChartComponents.paper_bgcolor,
             plot_bgcolor=ChartComponents.paper_bgcolor,
             font={"color": ChartComponents.font_color},
-            xaxis={"gridcolor": "#333", "showgrid": True},
-            yaxis={"gridcolor": "#333", "showgrid": True},
+            xaxis={"gridcolor": ChartComponents.grid_color, "showgrid": True},
+            yaxis={"gridcolor": ChartComponents.grid_color, "showgrid": True},
             height=350,
             showlegend=False,
             margin={"t": 50, "b": 30, "l": 50, "r": 30},

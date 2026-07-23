@@ -372,12 +372,11 @@ def main():
             dividend_high = st.slider("高股息率", 1.0, 6.0, 3.5, 0.1)
         
         st.markdown("---")
-        if st.button("🔄 刷新数据"):
-            # 清除所有缓存（包括本地parquet缓存和Streamlit内存缓存）
+        if st.button("🔄 刷新数据（重新从Excel加载）"):
+            # 清除所有缓存
             cache = DataCache()
             cache.clear()
             st.cache_data.clear()
-            st.success("✅ 缓存已清除，正在重新加载数据...")
             st.rerun()
 
     # 加载数据
