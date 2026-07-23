@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Streamlit
+.streamlit/
+
+# Build / Packaging
+dist/
+build/
+*.spec
+*.exe
+*.egg-info/
+
+# Virtual env
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Data cache
+dingtou-system/data_cache/
+
+# Optimization results (keep for now)
+# dingtou-system/optimization_*.json
+
+# OS
+.DS_Store
+Thumbs.db

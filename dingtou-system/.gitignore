@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 虚拟环境
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 数据缓存
+data_cache/
+*.parquet
+*.pkl
+
+# 日志
+*.log
+
+# 操作系统
+.DS_Store
+Thumbs.db

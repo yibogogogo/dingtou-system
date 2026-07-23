@@ -1,0 +1,234 @@
+{
+  "index_key": "kc50",
+  "data_dates": "2021-07-22 ~ 2026-07-20",
+  "data_points": 1209,
+  "n_iterations": 80,
+  "baseline": {
+    "total_return": 58.18,
+    "annual_return": 20.16,
+    "sharpe_ratio": 2.2,
+    "max_drawdown": 5.73
+  },
+  "top_10": [
+    {
+      "params": {
+        "technical_weight": 0.39045466860674277,
+        "valuation_weight": 0.17676880206251105,
+        "momentum_weight": 0.10084782400582776,
+        "sentiment_weight": 0.16136025249167002,
+        "fundflow_weight": 0.19042321612411717,
+        "min_score": 47
+      },
+      "weights": {
+        "technical": 0.38285320877143636,
+        "valuation": 0.17332742702707318,
+        "momentum": 0.09888449574958287,
+        "sentiment": 0.1582188545857182,
+        "fundflow": 0.1867160138661894
+      },
+      "avg_annual_return": 11.37,
+      "avg_sharpe": 3.4,
+      "avg_max_drawdown": 0.0,
+      "avg_total_return": 9.19,
+      "score": 1.402
+    },
+    {
+      "params": {
+        "technical_weight": 0.3829770563201687,
+        "valuation_weight": 0.13493564427131047,
+        "momentum_weight": 0.10454749016213019,
+        "sentiment_weight": 0.08668090197068676,
+        "fundflow_weight": 0.09563633644393066,
+        "min_score": 43
+      },
+      "weights": {
+        "technical": 0.4758794698255796,
+        "valuation": 0.16766827619752264,
+        "momentum": 0.12990857642489384,
+        "sentiment": 0.10770791877236831,
+        "fundflow": 0.11883575877963558
+      },
+      "avg_annual_return": 14.08,
+      "avg_sharpe": 3.37,
+      "avg_max_drawdown": 0.14,
+      "avg_total_return": 11.31,
+      "score": 1.4012
+    },
+    {
+      "params": {
+        "technical_weight": 0.18015987926370708,
+        "valuation_weight": 0.3485965620472097,
+        "momentum_weight": 0.24488986971416438,
+        "sentiment_weight": 0.21984468209883562,
+        "fundflow_weight": 0.14864193384505153,
+        "min_score": 44
+      },
+      "weights": {
+        "technical": 0.15773985234960483,
+        "valuation": 0.3052154034052124,
+        "momentum": 0.2144145080941336,
+        "sentiment": 0.1924860731248393,
+        "fundflow": 0.13014416302620974
+      },
+      "avg_annual_return": 15.19,
+      "avg_sharpe": 3.36,
+      "avg_max_drawdown": 0.31,
+      "avg_total_return": 12.15,
+      "score": 1.4011
+    },
+    {
+      "params": {
+        "technical_weight": 0.278024468035746,
+        "valuation_weight": 0.08887059750830742,
+        "momentum_weight": 0.23450216800975093,
+        "sentiment_weight": 0.24801077002085264,
+        "fundflow_weight": 0.07101260228547861,
+        "min_score": 42
+      },
+      "weights": {
+        "technical": 0.30206241175569004,
+        "valuation": 0.09655433281533023,
+        "momentum": 0.2547771817761598,
+        "sentiment": 0.269453735000952,
+        "fundflow": 0.0771523386518679
+      },
+      "avg_annual_return": 15.19,
+      "avg_sharpe": 3.36,
+      "avg_max_drawdown": 0.31,
+      "avg_total_return": 12.15,
+      "score": 1.4011
+    },
+    {
+      "params": {
+        "technical_weight": 0.3666316174903394,
+        "valuation_weight": 0.36584725711782157,
+        "momentum_weight": 0.0773618309146071,
+        "sentiment_weight": 0.14888406094051632,
+        "fundflow_weight": 0.05863381400249665,
+        "min_score": 43
+      },
+      "weights": {
+        "technical": 0.3603760016674584,
+        "valuation": 0.3596050243664573,
+        "momentum": 0.07604185230264461,
+        "sentiment": 0.14634374133095943,
+        "fundflow": 0.057633380332480326
+      },
+      "avg_annual_return": 15.19,
+      "avg_sharpe": 3.36,
+      "avg_max_drawdown": 0.31,
+      "avg_total_return": 12.15,
+      "score": 1.4011
+    },
+    {
+      "params": {
+        "technical_weight": 0.36085876637097475,
+        "valuation_weight": 0.273361699894322,
+        "momentum_weight": 0.1772666027740929,
+        "sentiment_weight": 0.23127087701894722,
+        "fundflow_weight": 0.0666796223459227,
+        "min_score": 42
+      },
+      "weights": {
+        "technical": 0.3252627967971282,
+        "valuation": 0.24639664968936206,
+        "momentum": 0.15978060219202894,
+        "sentiment": 0.20845776599362115,
+        "fundflow": 0.060102185327859575
+      },
+      "avg_annual_return": 15.19,
+      "avg_sharpe": 3.36,
+      "avg_max_drawdown": 0.31,
+      "avg_total_return": 12.15,
+      "score": 1.4011
+    },
+    {
+      "params": {
+        "technical_weight": 0.3027348848679197,
+        "valuation_weight": 0.22937820879132792,
+        "momentum_weight": 0.13796323150941936,
+        "sentiment_weight": 0.1157329090739832,
+        "fundflow_weight": 0.15087776841155578,
+        "min_score": 48
+      },
+      "weights": {
+        "technical": 0.32319748647102714,
+        "valuation": 0.24488245074540316,
+        "momentum": 0.1472885084542492,
+        "sentiment": 0.1235555833976998,
+        "fundflow": 0.16107597093162068
+      },
+      "avg_annual_return": 10.42,
+      "avg_sharpe": 3.4,
+      "avg_max_drawdown": 0.0,
+      "avg_total_return": 8.46,
+      "score": 1.3997
+    },
+    {
+      "params": {
+        "technical_weight": 0.25909313175279763,
+        "valuation_weight": 0.22101640734341987,
+        "momentum_weight": 0.05762573802322856,
+        "sentiment_weight": 0.0715782853986609,
+        "fundflow_weight": 0.05471437785301014,
+        "min_score": 45
+      },
+      "weights": {
+        "technical": 0.3901840811216372,
+        "valuation": 0.332842029538541,
+        "momentum": 0.08678209834216048,
+        "sentiment": 0.10779408673474895,
+        "fundflow": 0.0823977042629124
+      },
+      "avg_annual_return": 12.94,
+      "avg_sharpe": 3.37,
+      "avg_max_drawdown": 0.0,
+      "avg_total_return": 10.43,
+      "score": 1.3986
+    },
+    {
+      "params": {
+        "technical_weight": 0.17184550766934828,
+        "valuation_weight": 0.08906884560255356,
+        "momentum_weight": 0.25526990795364707,
+        "sentiment_weight": 0.13803049874792028,
+        "fundflow_weight": 0.06830573522671683,
+        "min_score": 42
+      },
+      "weights": {
+        "technical": 0.2378417066518448,
+        "valuation": 0.12327518208030291,
+        "momentum": 0.3533047292768081,
+        "sentiment": 0.19104025375733694,
+        "fundflow": 0.09453812823370722
+      },
+      "avg_annual_return": 15.07,
+      "avg_sharpe": 3.35,
+      "avg_max_drawdown": 0.31,
+      "avg_total_return": 12.06,
+      "score": 1.398
+    },
+    {
+      "params": {
+        "technical_weight": 0.40681862207084535,
+        "valuation_weight": 0.30245545039890515,
+        "momentum_weight": 0.2884433910624945,
+        "sentiment_weight": 0.1505274186210384,
+        "fundflow_weight": 0.13653558269395388,
+        "min_score": 42
+      },
+      "weights": {
+        "technical": 0.31664446432816584,
+        "valuation": 0.23541411056157963,
+        "momentum": 0.2245079209674868,
+        "sentiment": 0.11716197649295391,
+        "fundflow": 0.10627152764981387
+      },
+      "avg_annual_return": 15.07,
+      "avg_sharpe": 3.35,
+      "avg_max_drawdown": 0.31,
+      "avg_total_return": 12.06,
+      "score": 1.398
+    }
+  ]
+}
