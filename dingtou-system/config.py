@@ -1,5 +1,5 @@
 """
-量化定投择时系统 - 全局配置 (ETF版)
+量化定投择时系统 - 全局配置 (ETF版 | 经独立优化)
 """
 INDICES = {
     "kc50": {
@@ -16,7 +16,7 @@ INDICES = {
         "short": "ZXHL",
         "type": "ETF",
         "description": "中证红利ETF易方达(515180)",
-        "weights": {"technical": 0.183, "valuation": 0.263, "momentum": 0.335, "sentiment": 0.104, "fundflow": 0.116},
+        "weights": {"technical": 0.443, "valuation": 0.081, "momentum": 0.122, "sentiment": 0.277, "fundflow": 0.077},
     },
     "hldb": {
         "name": "红利低波",
@@ -24,11 +24,11 @@ INDICES = {
         "short": "HLDB",
         "type": "ETF",
         "description": "红利低波ETF易方达(563020)",
-        "weights": {"technical": 0.202, "valuation": 0.103, "momentum": 0.355, "sentiment": 0.244, "fundflow": 0.096},
+        "weights": {"technical": 0.109, "valuation": 0.475, "momentum": 0.134, "sentiment": 0.147, "fundflow": 0.135},
     },
 }
 
 INVESTMENT = {
     "base_amount": 2000,
-    "min_score": 47,
+    "min_score": 40,  # ETF数据下各指数最优min_score差异大，取折中
 }
