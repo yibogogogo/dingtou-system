@@ -34,7 +34,7 @@ class BacktestEngine:
         self.fee_rate = fee_rate
         self.dividend_yields = dividend_yields or {
             "kc50": 0.005,
-            "a500": 0.025,
+            "a50": 0.025,
             "zxhl": 0.05,
             "hldb": 0.045,
         }

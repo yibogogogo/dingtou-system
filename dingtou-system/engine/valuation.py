@@ -14,6 +14,7 @@ class ValuationIndicators:
         # 指数基准估值（基于历史数据估算）
         self.base_valuations = {
             "kc50": {"pe": 45.0, "pb": 4.5, "dividend_yield": 0.5},
+            "a50": {"pe": 14.0, "pb": 1.8, "dividend_yield": 2.5},
             "zxhl": {"pe": 7.5, "pb": 0.85, "dividend_yield": 5.5},
             "hldb": {"pe": 6.8, "pb": 0.75, "dividend_yield": 6.0},
         }

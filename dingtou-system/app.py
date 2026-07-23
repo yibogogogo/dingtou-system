@@ -173,7 +173,7 @@ def apply_theme(theme_name: str):
 # ETF Sina代码映射（全部使用易方达ETF在线数据）
 SINA_ETF = {
     "kc50": "sh588080",
-    "a500": "sh563360",
+    "a50": "sh563080",
     "zxhl": "sh515180",
     "hldb": "sh563020",
 }
@@ -656,9 +656,9 @@ def main():
     st.markdown("---")
     st.subheader("📈 价格走势")
 
-    tab1, tab2, tab3, tab4 = st.tabs(["科创50", "中证A500", "中证红利", "红利低波"])
+    tab1, tab2, tab3, tab4 = st.tabs(["科创50", "中证A50", "中证红利", "红利低波"])
 
-    tabs = {"kc50": tab1, "a500": tab2, "zxhl": tab3, "hldb": tab4}
+    tabs = {"kc50": tab1, "a50": tab2, "zxhl": tab3, "hldb": tab4}
     for key, tab in tabs.items():
         with tab:
             if data.get(key) is not None:

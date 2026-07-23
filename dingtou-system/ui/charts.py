@@ -103,10 +103,9 @@ class ChartComponents:
         """
         fig = go.Figure()
 
-        colors = {"kc50": "#00FF88", "zxhl": "#FFD700", "hldb": "#FF8C00"}
-        names = {"kc50": "科创50", "zxhl": "中证红利", "hldb": "红利低波"}
-
-        for col in ["kc50", "zxhl", "hldb"]:
+        colors = {"kc50": "#00FF88", "a50": "#00AAFF", "zxhl": "#FFD700", "hldb": "#FF8C00"}
+        names = {"kc50": "科创50", "a50": "中证A50", "zxhl": "中证红利", "hldb": "红利低波"}
+        for col in ["kc50", "a50", "zxhl", "hldb"]:
             if col in df_scores.columns:
                 fig.add_trace(
                     go.Scatter(

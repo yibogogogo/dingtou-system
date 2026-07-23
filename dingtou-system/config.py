@@ -10,13 +10,13 @@ INDICES = {
         "description": "科创50ETF易方达(588080)",
         "weights": {"technical": 0.383, "valuation": 0.173, "momentum": 0.099, "sentiment": 0.158, "fundflow": 0.187},
     },
-    "a500": {
-        "name": "中证A500",
-        "code": "563360",
-        "short": "A500",
+    "a50": {
+        "name": "中证A50",
+        "code": "563080",
+        "short": "A50",
         "type": "ETF",
-        "description": "中证A500ETF易方达(563360)",
-        "weights": {"technical": 0.233, "valuation": 0.365, "momentum": 0.110, "sentiment": 0.153, "fundflow": 0.139},
+        "description": "中证A50ETF易方达(563080)",
+        "weights": {"technical": 0.175, "valuation": 0.377, "momentum": 0.236, "sentiment": 0.149, "fundflow": 0.064},
     },
     "zxhl": {
         "name": "中证红利",
