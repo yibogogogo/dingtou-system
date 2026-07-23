@@ -15,6 +15,7 @@ class ValuationIndicators:
         self.base_valuations = {
             "kc50": {"pe": 45.0, "pb": 4.5, "dividend_yield": 0.5},
             "a50": {"pe": 14.0, "pb": 1.8, "dividend_yield": 2.5},
+            "a500": {"pe": 16.0, "pb": 2.0, "dividend_yield": 2.0},
             "zxhl": {"pe": 7.5, "pb": 0.85, "dividend_yield": 5.5},
             "hldb": {"pe": 6.8, "pb": 0.75, "dividend_yield": 6.0},
         }

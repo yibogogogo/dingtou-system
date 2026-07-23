@@ -174,6 +174,7 @@ def apply_theme(theme_name: str):
 SINA_ETF = {
     "kc50": "sh588080",
     "a50": "sh563080",
+    "a500": "sh563360",
     "zxhl": "sh515180",
     "hldb": "sh563020",
 }
@@ -393,7 +394,7 @@ def run_backtest(data_dict, weights, min_score, base_amount=2000):
         engine = AllocationEngine(
             base_amount=base_amount,
             min_score=min_score,
-            max_single_ratio=0.4,
+            max_single_ratio=0.3,
         )
         return engine.allocate(scores)
 
@@ -547,7 +548,7 @@ def main():
     scores = calculate_scores(data, weights=custom_weights)
 
     # 资金分配
-    allocation_engine = AllocationEngine(base_amount=base_amount, min_score=min_score, max_single_ratio=0.4)
+    allocation_engine = AllocationEngine(base_amount=base_amount, min_score=min_score, max_single_ratio=0.3)
     score_dict = {k: v["score"] for k, v in scores.items()}
     allocation = allocation_engine.allocate(score_dict)
 
@@ -656,9 +657,9 @@ def main():
     st.markdown("---")
     st.subheader("📈 价格走势")
 
-    tab1, tab2, tab3, tab4 = st.tabs(["科创50", "中证A50", "中证红利", "红利低波"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["科创50", "中证A50", "中证A500", "中证红利", "红利低波"])
 
-    tabs = {"kc50": tab1, "a50": tab2, "zxhl": tab3, "hldb": tab4}
+    tabs = {"kc50": tab1, "a50": tab2, "a500": tab3, "zxhl": tab4, "hldb": tab5}
     for key, tab in tabs.items():
         with tab:
             if data.get(key) is not None:
