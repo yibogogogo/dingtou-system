@@ -39,8 +39,8 @@ INDICES = {
         "name": "红利低波",
         "code": "H30269",
         "short": "HLDB",
-        "type": "复合稳健型",
-        "description": "红利+低波复合型指数",
+        "type": "ETF代理",
+        "description": "红利低波ETF(563020)在线实时数据",
         "weights": {
             "technical": 0.202,
             "valuation": 0.103,

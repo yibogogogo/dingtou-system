@@ -175,7 +175,7 @@ def apply_theme(theme_name: str):
 EXCEL_FILES = {
     "kc50": "000688perf科创50.xlsx",
     "zxhl": "000922perf中证红利.xlsx",
-    "hldb": "H30269perf红利低波.xlsx",
+    # hldb: 使用易方达红利低波ETF(563020)在线源，无需Excel
 }
 
 
@@ -192,6 +192,43 @@ def load_filtered_data(force_refresh: bool = False):
 
     for key, info in INDICES.items():
         try:
+            # 红利低波：直接使用易方达ETF(563020)在线数据
+            if key == "hldb":
+                use_cache = not force_refresh and cache.exists(key)
+                if use_cache:
+                    df = cache.load(key)
+                    print(f"[CACHE] 从缓存加载 563020 ({len(df)} 条)")
+                else:
+                    df = _fetch_full_sina("sh563020", "20240101")
+                    if df is not None and not df.empty:
+                        cache.save(key, df)
+                        print(f"[ONLINE] 563020 在线加载 ({len(df)} 条)")
+                    elif cache.exists(key):
+                        df = cache.load(key)
+                        print(f"[FALLBACK] 563020 在线失败，使用缓存")
+                    else:
+                        data[key] = None
+                        continue
+
+                # 在线同步最新数据
+                try:
+                    last_date = df['date'].max()
+                    if pd.Timestamp.now() - last_date > pd.Timedelta(days=0):
+                        new_df = _fetch_sina_data("sh563020", 
+                            (last_date + pd.Timedelta(days=1)).strftime('%Y%m%d'),
+                            pd.Timestamp.now().strftime('%Y%m%d'))
+                        if new_df is not None and not new_df.empty:
+                            df = pd.concat([df, new_df], ignore_index=True)
+                            df = df.drop_duplicates('date').sort_values('date')
+                            cache.save(key, df)
+                            print(f"  [SYNC] 563020 追加 {len(new_df)} 条新数据")
+                except Exception as e:
+                    print(f"  [SYNC] 563020 在线更新跳过: {e}")
+
+                df = TechnicalIndicators.calculate_all(df)
+                data[key] = df
+                continue
+
             filename = EXCEL_FILES.get(key)
             if not filename:
                 data[key] = None
@@ -241,7 +278,10 @@ def load_filtered_data(force_refresh: bool = False):
                 today_str = pd.Timestamp.now().strftime('%Y%m%d')
                 if pd.Timestamp.now() - last_date > pd.Timedelta(days=0):
                     from_d = (last_date + pd.Timedelta(days=1)).strftime('%Y%m%d')
-                    new_df = _fetch_incremental(info["code"], from_d, today_str)
+                    sina_lookup = {"000688": "sh000688", "000922": "sh000922"}
+                    sina_code = sina_lookup.get(info["code"])
+                    if sina_code:
+                        new_df = _fetch_sina_data(sina_code, from_d, today_str)
                     if new_df is not None and not new_df.empty:
                         df = pd.concat([df, new_df], ignore_index=True)
                         df = df.drop_duplicates('date').sort_values('date')
@@ -270,7 +310,43 @@ def load_filtered_data(force_refresh: bool = False):
     return data
 
 
-def _fetch_incremental(symbol: str, from_date: str, to_date: str) -> pd.DataFrame | None:
+def _fetch_sina_raw(sina_code: str, from_date: str, datalen: int = 500) -> pd.DataFrame | None:
+    """从新浪获取原始K线数据"""
+    import requests
+    try:
+        url = (f"http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"
+               f"CN_MarketData.getKLineData?symbol={sina_code}&scale=240&ma=no&datalen={datalen}")
+        headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://finance.sina.com.cn/"}
+        r = requests.get(url, headers=headers, timeout=15)
+        data = r.json()
+        if not data or not isinstance(data, list):
+            return None
+        records = []
+        for item in data:
+            d = pd.to_datetime(item["day"])
+            if d >= pd.to_datetime(from_date):
+                records.append({
+                    "date": d, "open": float(item["open"]), "high": float(item["high"]),
+                    "low": float(item["low"]), "close": float(item["close"]),
+                    "volume": float(item["volume"])
+                })
+        return pd.DataFrame(records).sort_values("date") if records else None
+    except:
+        return None
+
+
+def _fetch_full_sina(sina_code: str, from_date: str = "20200101") -> pd.DataFrame | None:
+    """从新浪获取全部历史数据（最多约2000条）"""
+    return _fetch_sina_raw(sina_code, from_date, datalen=2000)
+
+
+def _fetch_sina_data(sina_code: str, from_date: str, to_date: str) -> pd.DataFrame | None:
+    """从新浪获取指定日期范围的数据"""
+    start = pd.to_datetime(from_date)
+    end = pd.to_datetime(to_date)
+    days = (end - start).days + 10
+    datalen = min(int(days * 1.5), 1000)
+    return _fetch_sina_raw(sina_code, from_date, datalen=datalen)
     """
     从在线API获取增量数据
     优先新浪财经，其次East Money
