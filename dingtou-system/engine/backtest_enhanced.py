@@ -144,6 +144,9 @@ class EnhancedBacktestEngine:
         monthly_scores = []
 
         for trade_date in trading_days:
+            # 每月追加定投资金
+            cash += self.monthly_invest
+            
             # 获取当日各指数数据
             scores = {}
             close_histories = {}

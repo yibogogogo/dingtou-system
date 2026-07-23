@@ -1,15 +1,14 @@
 """
-单指数参数优化脚本
-用法: python optimize_per_index.py <index_key> <excel_file>
-示例: python optimize_per_index.py kc50 ../000688perf科创50.xlsx
+单指数参数优化脚本 (ETF版)
+用法: python optimize_per_index.py <index_key>
+示例: python optimize_per_index.py kc50
 """
 import pandas as pd
 import numpy as np
 import sys
 import os
-import re
 import json
-import itertools
+import requests
 from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -18,36 +17,40 @@ from engine.scoring import ScoringEngine
 from engine.allocation import AllocationEngine
 from engine.backtest import BacktestEngine
 from engine.indicators import TechnicalIndicators
+from config import INDICES
+
+# ETF Sina代码映射
+SINA_ETF = {"kc50": "sh588080", "zxhl": "sh515180", "hldb": "sh563020"}
 
 
-def load_single_index(index_key: str, excel_file: str):
-    """加载单个指数的数据"""
-    df = pd.read_excel(excel_file)
-    columns = df.columns.tolist()
-
-    if len(columns) < 13:
-        print(f"ERROR: {excel_file} 格式异常，仅有{len(columns)}列")
+def load_etf_data(index_key: str):
+    """从新浪加载ETF全量历史数据"""
+    sina_code = SINA_ETF[index_key]
+    url = (f"http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"
+           f"CN_MarketData.getKLineData?symbol={sina_code}&scale=240&ma=no&datalen=2000")
+    headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://finance.sina.com.cn/"}
+    
+    print(f"  正在获取 {sina_code} ...")
+    r = requests.get(url, headers=headers, timeout=30)
+    data = r.json()
+    if not data or not isinstance(data, list):
+        print(f"  ERROR: 无数据")
         return None
-
-    # 按文件名中的指数代码过滤
-    code_match = re.match(r'([A-Z0-9]+)', os.path.basename(excel_file).split('perf')[0])
-    if code_match:
-        raw_code = code_match.group(1)
-        correct_code = raw_code.lstrip('0') or '0'
-        code_col = columns[1]
-        df[code_col] = df[code_col].astype(str)
-        before = len(df)
-        df = df[df[code_col] == correct_code].copy()
-        print(f"  代码过滤: {before} -> {len(df)} 行 ({correct_code})")
-
-    df['date'] = pd.to_datetime(df[columns[0]].astype(str))
-    df['close'] = df[columns[9]]
-    df['open'] = df[columns[6]].fillna(df['close'])
-    df['high'] = df[columns[7]].fillna(df['close'])
-    df['low'] = df[columns[8]].fillna(df['close'])
-    df['volume'] = df[columns[12]].fillna(0)
+    
+    records = []
+    for item in data:
+        records.append({
+            "date": pd.to_datetime(item["day"]),
+            "open": float(item["open"]), "high": float(item["high"]),
+            "low": float(item["low"]), "close": float(item["close"]),
+            "volume": float(item["volume"])
+        })
+    
+    df = pd.DataFrame(records).sort_values("date")
+    df['amount'] = df['close'] * df['volume']
     df = TechnicalIndicators.calculate_all(df)
-
+    print(f"  获取 {len(df)} 条, {df['date'].iloc[0].date()} ~ {df['date'].iloc[-1].date()}")
+    return {index_key: df}
     return {index_key: df}
 
 
@@ -198,18 +201,17 @@ def optimize_index(index_key: str, data_dict: dict, n_iter: int = 50, n_splits: 
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("用法: python optimize_per_index.py <index_key> <excel_file>")
-        print("示例: python optimize_per_index.py kc50 ../000688perf科创50.xlsx")
+    valid = ["kc50", "zxhl", "hldb"]
+    if len(sys.argv) < 2 or sys.argv[1] not in valid:
+        print(f"用法: python optimize_per_index.py <{('/').join(valid)}>")
         sys.exit(1)
 
     np.random.seed(42)
 
     index_key = sys.argv[1]
-    excel_file = sys.argv[2]
 
-    print(f"正在加载 {index_key} 数据...")
-    data_dict = load_single_index(index_key, excel_file)
+    print(f"正在从新浪加载 {index_key} ETF数据...")
+    data_dict = load_etf_data(index_key)
     if data_dict is None:
         print("数据加载失败")
         sys.exit(1)

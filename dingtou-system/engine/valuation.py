@@ -97,7 +97,7 @@ class ValuationIndicators:
                 "valuation_score": 估值得分 (0-100, 越低越便宜)
             }
         """
-        close = row.get("close", 1000)
+        close = row.get("close", 1.0)
         
         # 如果有历史数据，计算百分位
         if close_history is not None and len(close_history) >= 60:

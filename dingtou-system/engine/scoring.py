@@ -199,13 +199,13 @@ class ScoringEngine:
         bias60_score = self._sigmoid_score(bias60, center=0, scale=12, direction="lower_better")
         scores.append((bias60_score, 0.2))
 
-        # === MACD 评分（平滑过渡，避免跳跃） ===
+        # === MACD 评分（平滑过渡，使用相对尺度避免ETF/指数量级差异） ===
         dif = row.get("macd_dif", 0)
         dea = row.get("macd_dea", 0)
-        macd_hist = row.get("macd_hist", 0)
-
-        # 使用sigmoid平滑过渡：dif-dea > 0 时趋向高分，< 0 时趋向低分
-        macd_raw_score = 50 + (dif - dea) * 50 / max(abs(dea) if abs(dea) > 0 else 1, 0.01)
+        close_val = row.get("close", 1.0)
+        # 使用收盘价归一化，保证指数和ETF尺度下行为一致
+        norm = max(abs(close_val) * 0.001, 1e-8)
+        macd_raw_score = 50 + (dif - dea) / norm * 5
         macd_score = max(0, min(100, macd_raw_score))
         scores.append((macd_score, 0.3))
 
@@ -235,7 +235,7 @@ class ScoringEngine:
                                           direction="lower_better")
         else:
             # 使用价格位置作为估值代理：价格低于MA60 = 便宜 = 高分
-            close = row.get("close", 1000)
+            close = row.get("close", 1.0)
             ma60 = row.get("ma_60", close)
             if ma60 > 0:
                 proxy = (close - ma60) / ma60 * 100
@@ -264,7 +264,7 @@ class ScoringEngine:
                                            direction="higher_better")
         else:
             # 使用价格位置代理：价格越低 = 股息率越高
-            close = row.get("close", 1000)
+            close = row.get("close", 1.0)
             ma20 = row.get("ma_20", close)
             if ma20 > 0:
                 proxy_div = 1 - (close - ma20) / ma20  # 价格越低，值越大
