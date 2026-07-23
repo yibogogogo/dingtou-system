@@ -1,5 +1,5 @@
 """
-量化定投择时系统 - 全局配置 (ETF版 | 经独立优化)
+量化定投择时系统 - 全局配置 (ETF版 | 四指数)
 """
 INDICES = {
     "kc50": {
@@ -9,6 +9,14 @@ INDICES = {
         "type": "ETF",
         "description": "科创50ETF易方达(588080)",
         "weights": {"technical": 0.383, "valuation": 0.173, "momentum": 0.099, "sentiment": 0.158, "fundflow": 0.187},
+    },
+    "a500": {
+        "name": "中证A500",
+        "code": "563360",
+        "short": "A500",
+        "type": "ETF",
+        "description": "中证A500ETF易方达(563360)",
+        "weights": {"technical": 0.233, "valuation": 0.365, "momentum": 0.110, "sentiment": 0.153, "fundflow": 0.139},
     },
     "zxhl": {
         "name": "中证红利",
@@ -30,5 +38,5 @@ INDICES = {
 
 INVESTMENT = {
     "base_amount": 2000,
-    "min_score": 40,  # ETF数据下各指数最优min_score差异大，取折中
+    "min_score": 40,
 }

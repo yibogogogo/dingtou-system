@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple
 class AllocationEngine:
     """资金分配引擎"""
 
-    def __init__(self, base_amount: float = 2000, min_score: float = 25, max_single_ratio: float = 0.6):
+    def __init__(self, base_amount: float = 2000, min_score: float = 25, max_single_ratio: float = 0.4):
         """
         Args:
             base_amount: 月定投基础金额

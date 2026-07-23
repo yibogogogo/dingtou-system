@@ -20,7 +20,7 @@ from engine.indicators import TechnicalIndicators
 from config import INDICES
 
 # ETF Sina代码映射
-SINA_ETF = {"kc50": "sh588080", "zxhl": "sh515180", "hldb": "sh563020"}
+SINA_ETF = {"kc50": "sh588080", "a500": "sh563360", "zxhl": "sh515180", "hldb": "sh563020"}
 
 
 def load_etf_data(index_key: str):
@@ -201,7 +201,7 @@ def optimize_index(index_key: str, data_dict: dict, n_iter: int = 50, n_splits: 
 
 
 if __name__ == "__main__":
-    valid = ["kc50", "zxhl", "hldb"]
+    valid = ["kc50", "a500", "zxhl", "hldb"]
     if len(sys.argv) < 2 or sys.argv[1] not in valid:
         print(f"用法: python optimize_per_index.py <{('/').join(valid)}>")
         sys.exit(1)

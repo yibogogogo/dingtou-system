@@ -173,6 +173,7 @@ def apply_theme(theme_name: str):
 # ETF Sina代码映射（全部使用易方达ETF在线数据）
 SINA_ETF = {
     "kc50": "sh588080",
+    "a500": "sh563360",
     "zxhl": "sh515180",
     "hldb": "sh563020",
 }
@@ -392,7 +393,7 @@ def run_backtest(data_dict, weights, min_score, base_amount=2000):
         engine = AllocationEngine(
             base_amount=base_amount,
             min_score=min_score,
-            max_single_ratio=0.6,
+            max_single_ratio=0.4,
         )
         return engine.allocate(scores)
 
@@ -546,7 +547,7 @@ def main():
     scores = calculate_scores(data, weights=custom_weights)
 
     # 资金分配
-    allocation_engine = AllocationEngine(base_amount=base_amount, min_score=min_score)
+    allocation_engine = AllocationEngine(base_amount=base_amount, min_score=min_score, max_single_ratio=0.4)
     score_dict = {k: v["score"] for k, v in scores.items()}
     allocation = allocation_engine.allocate(score_dict)
 
@@ -570,7 +571,7 @@ def main():
         'F': {'color': '#FF4444', 'bg': 'rgba(255,68,68,0.08)', 'action': '暂停买入', 'desc': '估值偏高，不建议入场'},
     }
 
-    cols = st.columns(3)
+    cols = st.columns(len(scores))
     for i, (key, info) in enumerate(scores.items()):
         with cols[i]:
             score = info['score']
@@ -655,9 +656,9 @@ def main():
     st.markdown("---")
     st.subheader("📈 价格走势")
 
-    tab1, tab2, tab3 = st.tabs(["科创50", "中证红利", "红利低波"])
+    tab1, tab2, tab3, tab4 = st.tabs(["科创50", "中证A500", "中证红利", "红利低波"])
 
-    tabs = {"kc50": tab1, "zxhl": tab2, "hldb": tab3}
+    tabs = {"kc50": tab1, "a500": tab2, "zxhl": tab3, "hldb": tab4}
     for key, tab in tabs.items():
         with tab:
             if data.get(key) is not None:
