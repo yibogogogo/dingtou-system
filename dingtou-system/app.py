@@ -211,17 +211,20 @@ def load_filtered_data(force_refresh: bool = False):
             # 在线追加最新数据
             try:
                 last_date = df['date'].max()
-                if pd.Timestamp.now() - last_date > pd.Timedelta(days=0):
+                now = pd.Timestamp.now()
+                if now - last_date > pd.Timedelta(hours=6):
                     from_d = (last_date + pd.Timedelta(days=1)).strftime('%Y%m%d')
-                    to_d = pd.Timestamp.now().strftime('%Y%m%d')
+                    to_d = now.strftime('%Y%m%d')
                     new_df = _fetch_sina_data(sina_code, from_d, to_d)
                     if new_df is not None and not new_df.empty:
                         df = pd.concat([df, new_df], ignore_index=True)
                         df = df.drop_duplicates('date').sort_values('date')
                         cache.save(key, df)
-                        print(f"  [SYNC] {info['name']} +{len(new_df)} 条")
+                        print(f"  [SYNC] {info['name']} +{len(new_df)} 条 | {new_df.iloc[-1]['date'].date()} close={new_df.iloc[-1]['close']:.3f}")
+                    else:
+                        print(f"  [SYNC] {info['name']} 无新数据 (已至 {last_date.date()})")
             except Exception as e:
-                pass
+                print(f"  [SYNC] {info['name']} 失败: {e}")
 
             df = TechnicalIndicators.calculate_all(df)
             data[key] = df
@@ -503,16 +506,16 @@ def main():
             dividend_high = st.slider("高股息率", 1.0, 6.0, 3.5, 0.1)
         
         st.markdown("---")
-        if st.button("🔄 刷新数据（重新从Excel加载）"):
-            cache = DataCache()
-            cache.clear()
+        if st.button("🔄 刷新数据"):
             st.session_state.force_refresh = True
             st.rerun()
 
-    # 加载数据（Excel为主源，缓存辅助）
+    # 加载数据（全部ETF在线数据 + 缓存 + 增量）
     force = st.session_state.pop('force_refresh', False)
     with st.spinner("正在加载数据..."):
         data = load_filtered_data(force_refresh=force)
+    if force:
+        st.toast("✅ 数据已从在线源刷新", icon="🔄")
 
     # 显示数据更新信息
     for key, info in INDICES.items():
